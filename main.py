@@ -64,9 +64,9 @@ def plot():
 
     ax = fig.add_subplot()
 
-    ax.plot(t, S / 1000, "b", alpha=0.5, lw=2, label="Susceptible")
+    ax.plot(t, S / 1000, "g", alpha=0.5, lw=2, label="Susceptible")
     ax.plot(t, I / 1000, "r", alpha=0.5, lw=2, label="Infected")
-    ax.plot(t, R / 1000, "g", alpha=0.5, lw=2, label="Recovered")
+    ax.plot(t, R / 1000, "b", alpha=0.5, lw=2, label="Recovered")
     ax.plot(t, D / 1000, "k", alpha=0.5, lw=2, label="Dead")
     ax.plot(t, sigmoid(t, 100, 0, 1000) / 1000, "y", alpha=0.5, lw=2, label="True Dead")
 
