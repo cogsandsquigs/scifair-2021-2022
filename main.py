@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 # Amount of days in the simulation
 days = 160
 # Total population, N.
+# us state pop data from https://www.census.gov/data/tables/2020/dec/2020-apportionment-data.html
 N = 1000
 # Initial number of infected and recovered individuals, I0 and R0.
 I0, R0, D0 = 1, 0, 0
