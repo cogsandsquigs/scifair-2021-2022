@@ -1,10 +1,36 @@
+from datetime import time
+from os import times
 import lmfit
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
+import pandas as pd
+
+
+us_county_covid_deaths = pd.read_csv("data/time_series_covid19_deaths_US.csv")
+
+uid = 84001007
+county_data = us_county_covid_deaths.loc[us_county_covid_deaths["UID"] == uid]
+
+dateslist = list(county_data)[12:]
+
+deathslist = []
+
+for date in dateslist:
+    deathslist.append(int(county_data[date]))
+
+dateshift = 0
+
+for n in deathslist:
+    if n == 0:
+        dateshift += 1
+
+deathslist = deathslist[dateshift:]
+
+print(deathslist)
 
 # Amount of days in the simulation
-days = 160
+days = len(deathslist)
 # Total population, N.
 # us state pop data from https://www.census.gov/data/tables/2020/dec/2020-apportionment-data.html
 N = 1000
@@ -22,6 +48,7 @@ params.add("beta", min=0, max=1, value=0.2)  # beta is the contact rate
 params.add("gamma", min=0, max=1, value=0.1)  # gamma is the infected -> end state rate
 params.add("rho", min=0, max=1, value=0.25)  # rho is the death rate
 
+
 # A grid of time points (in days)
 t = np.linspace(0, days, days)
 
@@ -30,7 +57,7 @@ def sigmoid(x, a, b, k):
     return k / (1 + np.exp(a + b * x))
 
 
-fit_data = sigmoid(t, 10, -0.1, 200)
+fit_data = np.array(deathslist)  # sigmoid(t, 10, -0.1, 200)
 
 
 class CovidModel:
