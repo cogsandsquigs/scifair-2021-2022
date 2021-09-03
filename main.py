@@ -8,8 +8,8 @@ import pandas as pd
 
 
 us_county_covid_deaths = pd.read_csv("data/time_series_covid19_deaths_US.csv")
+uid = 84017031  # bibb county, alabama
 
-uid = 84001007
 county_data = us_county_covid_deaths.loc[us_county_covid_deaths["UID"] == uid]
 
 dateslist = list(county_data)[12:]
@@ -27,13 +27,20 @@ for n in deathslist:
 
 deathslist = deathslist[dateshift:]
 
-print(deathslist)
+us_county_population = pd.read_csv("data/co-est2020-alldata.csv")
+state = "Illinois"
+county = "Cook County"
+
+states = us_county_population.loc[us_county_population["STNAME"] == state]
+cty_pop = states.loc[states["CTYNAME"] == county]
+
+# print(deathslist)
 
 # Amount of days in the simulation
 days = len(deathslist)
 # Total population, N.
-# us state pop data from https://www.census.gov/data/tables/2020/dec/2020-apportionment-data.html
-N = 1000
+# us state pop data from https://www.census.gov/programs-surveys/popest/technical-documentation/research/evaluation-estimates/2020-evaluation-estimates/2010s-counties-total.html
+N = int(cty_pop["POPESTIMATE2020"])
 # Initial number of infected and recovered individuals, I0 and R0.
 I0, R0, D0 = 1, 0, 0
 # Everyone else, S0, is susceptible to infection initially.
@@ -138,16 +145,14 @@ class CovidModel:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
 
         def set_ax(ax, S, I, R, D):
-            ax.plot(t, S / 1000, "g", alpha=0.5, lw=2, label="Susceptible")
-            ax.plot(t, I / 1000, "r", alpha=0.5, lw=2, label="Infected")
-            ax.plot(t, R / 1000, "b", alpha=0.5, lw=2, label="Recovered")
-            ax.plot(t, D / 1000, "k", alpha=0.5, lw=2, label="Dead")
-            ax.plot(t, fit_data / 1000, "y", alpha=0.5, lw=2, label="True Dead")
+            # ax.plot(t, S, "g", alpha=0.5, lw=2, label="Susceptible")
+            ax.plot(t, I, "r", alpha=0.5, lw=2, label="Infected")
+            # ax.plot(t, R, "b", alpha=0.5, lw=2, label="Recovered")
+            ax.plot(t, D, "k", alpha=0.5, lw=2, label="Dead")
+            ax.plot(t, fit_data, "y", alpha=0.5, lw=2, label="True Dead")
 
-            ax.set_xlabel("Time /days")
-            ax.set_ylabel("Number (1000s)")
-
-            ax.set_ylim(0, 1.2)
+            ax.set_xlabel("Time in days")
+            ax.set_ylabel("Number of people per category")
 
             ax.yaxis.set_tick_params(length=0)
             ax.xaxis.set_tick_params(length=0)
