@@ -24,7 +24,7 @@ class SimpleCovidModel:
         N = self.N
 
         S, I, R, D = y
-        dSdt = -self.beta(a, b, k, t) * S * I / N + R
+        dSdt = -self.beta(a, b, k, t) * S * I / N
         dIdt = self.beta(a, b, k, t) * S * I / N - gamma * I
         dRdt = (1 - rho) * gamma * I
         dDdt = (rho) * gamma * I
