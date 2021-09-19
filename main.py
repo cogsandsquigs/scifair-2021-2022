@@ -4,7 +4,7 @@ import lmfit
 import numpy as np
 import pandas as pd
 
-from model import CovidModel
+from model import SimpleCovidModel
 
 
 def us_county_data():
@@ -43,17 +43,15 @@ def get_params():
     # all of these rates can be represented as
     # 1/the days it takes to go from one state to the next
     # an end state is simply either being recovered or being dead
-    params.add("beta", min=0, max=1, value=0.2)  # beta is the contact rate
+    # beta is calculated through these next three lines is the contact rate
+    params.add("beta_a", min=0, max=1, value=0.2)
+    params.add("beta_b", min=0, max=1, value=0.2)
+    params.add("beta_k", min=0, max=1, value=0.2)
     params.add(
         "gamma", min=0, max=1, value=0.1
     )  # gamma is the infected -> end state rate
     params.add("rho", min=0, max=1, value=0.25)  # rho is the death rate
     return params
-
-
-# for reference i guess
-def sigmoid(x, a, b, k):
-    return k / (1 + np.exp(a + b * x))
 
 
 deaths, pop = us_county_data()
@@ -74,6 +72,12 @@ I0, R0, D0 = 1, 0, 0
 S0 = N - I0 - R0 - D0
 
 y0 = S0, I0, R0, D0
-newModel = CovidModel(N, days, y0, params, fit_data)
+newModel = SimpleCovidModel(
+    N,
+    days,
+    y0,
+    params,
+    fit_data,
+)
 
 newModel.plot()

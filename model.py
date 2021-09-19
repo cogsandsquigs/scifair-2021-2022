@@ -4,7 +4,7 @@ from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
 
-class CovidModel:
+class SimpleCovidModel:
     # params = lmfit.Parameters()
 
     def __init__(self, N, days, y0, params, fit_data):
@@ -15,14 +15,17 @@ class CovidModel:
         self.t = np.linspace(0, days, days)  # array of days
         self.fit_data = fit_data
 
+    def beta(self, beta_a, beta_b, beta_k, t):
+        return beta_k / (1 + np.exp(beta_a + beta_b * t))
+
     # The SIR model differential equations.
-    def deriv(self, y, t, beta, gamma, rho):
+    def deriv(self, y, t, a, b, k, gamma, rho):
 
         N = self.N
 
         S, I, R, D = y
-        dSdt = -beta * S * I / N
-        dIdt = beta * S * I / N - gamma * I
+        dSdt = -self.beta(a, b, k, t) * S * I / N + R
+        dIdt = self.beta(a, b, k, t) * S * I / N - gamma * I
         dRdt = (1 - rho) * gamma * I
         dDdt = (rho) * gamma * I
         return dSdt, dIdt, dRdt, dDdt
@@ -33,20 +36,24 @@ class CovidModel:
             self.y0,
             self.t,
             args=(
-                self.params["beta"],
+                self.params["beta_a"],
+                self.params["beta_b"],
+                self.params["beta_k"],
                 self.params["gamma"],
                 self.params["rho"],
             ),
         )
         return ret.T
 
-    def fitter(self, x, beta, gamma, rho):
+    def fitter(self, x, beta_a, beta_b, beta_k, gamma, rho):
         ret = odeint(
             self.deriv,
             self.y0,
             self.t,
             args=(
-                beta,
+                beta_a,
+                beta_b,
+                beta_k,
                 gamma,
                 rho,
             ),
@@ -66,7 +73,9 @@ class CovidModel:
             params,
             method="least_squares",
             x=x_data,
-            beta=self.params["beta"],
+            beta_a=self.params["beta_a"],
+            beta_b=self.params["beta_b"],
+            beta_k=self.params["beta_k"],
             gamma=self.params["gamma"],
             rho=self.params["rho"],
         )
