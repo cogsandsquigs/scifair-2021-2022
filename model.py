@@ -1,6 +1,5 @@
 import lmfit
 import numpy as np
-from scipy.optimize import minimize
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
