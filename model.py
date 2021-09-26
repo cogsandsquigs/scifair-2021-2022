@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 
 
 class SimpleCovidModel:
-    # params = lmfit.Parameters()
-
     def __init__(self, N, days, y0, params, fit_data):
         self.params = params  # model parameters
         self.N = N  # number of people
@@ -18,14 +16,42 @@ class SimpleCovidModel:
     def beta(self, beta_a, beta_b, beta_k, t):
         return beta_k / (1 + np.exp(beta_a + beta_b * t))
 
+    def lockdown(self, a, b, t):
+        return 1 / (1 + np.exp(a + b * t))
+
     # The SIR model differential equations.
-    def deriv(self, y, t, a, b, k, gamma, rho):
+    def deriv(
+        self,
+        y,
+        t,
+        beta_a,
+        beta_b,
+        beta_k,
+        slipthrough,
+        lockdown_a,
+        lockdown_b,
+        gamma,
+        rho,
+    ):
 
         N = self.N
 
         S, I, R, D = y
-        dSdt = -self.beta(a, b, k, t) * S * I / N
-        dIdt = self.beta(a, b, k, t) * S * I / N - gamma * I
+        dSdt = (
+            -self.beta(beta_a, beta_b, beta_k, t)
+            * (self.lockdown(lockdown_a, lockdown_b, t) - slipthrough)
+            * S
+            * I
+            / N
+        )
+        dIdt = (
+            self.beta(beta_a, beta_b, beta_k, t)
+            * (1 + slipthrough - self.lockdown(lockdown_a, lockdown_b, t))
+            * S
+            * I
+            / N
+            - gamma * I
+        )
         dRdt = (1 - rho) * gamma * I
         dDdt = (rho) * gamma * I
         return dSdt, dIdt, dRdt, dDdt
@@ -39,13 +65,18 @@ class SimpleCovidModel:
                 self.params["beta_a"],
                 self.params["beta_b"],
                 self.params["beta_k"],
+                self.params["slipthrough"],
+                self.params["lockdown_a"],
+                self.params["lockdown_b"],
                 self.params["gamma"],
                 self.params["rho"],
             ),
         )
         return ret.T
 
-    def fitter(self, x, beta_a, beta_b, beta_k, gamma, rho):
+    def fitter(
+        self, x, beta_a, beta_b, beta_k, slipthrough, lockdown_a, lockdown_b, gamma, rho
+    ):
         ret = odeint(
             self.deriv,
             self.y0,
@@ -54,6 +85,9 @@ class SimpleCovidModel:
                 beta_a,
                 beta_b,
                 beta_k,
+                slipthrough,
+                lockdown_a,
+                lockdown_b,
                 gamma,
                 rho,
             ),
@@ -76,6 +110,9 @@ class SimpleCovidModel:
             beta_a=self.params["beta_a"],
             beta_b=self.params["beta_b"],
             beta_k=self.params["beta_k"],
+            slipthrough=self.params["slipthrough"],
+            lockdown_a=self.params["lockdown_a"],
+            lockdown_b=self.params["lockdown_b"],
             gamma=self.params["gamma"],
             rho=self.params["rho"],
         )
@@ -85,15 +122,18 @@ class SimpleCovidModel:
 
         return
 
-    def optimizer(self, x, beta_a, beta_b):
+    def optimizer(self, x, lockdown_a, lockdown_b):
         ret = odeint(
             self.deriv,
             self.y0,
             self.t,
             args=(
-                beta_a,
-                beta_b,
+                self.params["beta_a"],
+                self.params["beta_b"],
                 self.params["beta_k"],
+                self.params["slipthrough"],
+                lockdown_a,
+                lockdown_b,
                 self.params["gamma"],
                 self.params["rho"],
             ),
@@ -109,8 +149,8 @@ class SimpleCovidModel:
 
         params = lmfit.Parameters()
 
-        params.add("beta_a", min=0, max=1, value=0.2)
-        params.add("beta_b", min=0, max=1, value=0.2)
+        params.add("lockdown_a", min=0, max=1, value=0.2)
+        params.add("lockdown_b", min=0, max=1, value=0.2)
 
         x_data = self.t
         y_data = self.fit_data
@@ -120,14 +160,14 @@ class SimpleCovidModel:
             params,
             method="least_squares",
             x=x_data,
-            beta_a=self.params["beta_a"],
-            beta_b=self.params["beta_b"],
+            lockdown_a=self.params["lockdown_a"],
+            lockdown_b=self.params["lockdown_b"],
         )
 
         print(result.fit_report())
 
-        self.params["beta_a"] = params["beta_a"]
-        self.params["beta_b"] = params["beta_b"]
+        self.params["lockdown_a"] = params["lockdown_a"]
+        self.params["lockdown_b"] = params["lockdown_b"]
 
     def plot(self):
 

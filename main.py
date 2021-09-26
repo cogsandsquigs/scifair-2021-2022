@@ -43,10 +43,19 @@ def get_params():
     # all of these rates can be represented as
     # 1/the days it takes to go from one state to the next
     # an end state is simply either being recovered or being dead
+
     # beta is calculated through these next three lines is the contact rate
     params.add("beta_a", min=0, max=1, value=0.2)
     params.add("beta_b", min=0, max=1, value=0.2)
-    params.add("beta_k", min=0, max=1, value=0.2)
+    params.add("beta_k", min=0, max=10, value=0.2)
+
+    # lockdown is calculated through these next lines
+    params.add(
+        "slipthrough", min=0, max=1, value=0
+    )  # slipthrough rate of the disease through lockdown efforts
+    params.add("lockdown_a", min=0, max=1, value=0.2)
+    params.add("lockdown_b", min=0, max=1, value=0.2)
+
     params.add(
         "gamma", min=0, max=1, value=0.1
     )  # gamma is the infected -> end state rate
