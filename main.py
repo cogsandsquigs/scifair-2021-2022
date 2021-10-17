@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from datetime import time
 from os import times
 import lmfit

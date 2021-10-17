@@ -232,4 +232,11 @@ class SimpleCovidModel:
         set_ax(ax3, L, S, I, R, D)
         ax3.set_title("after optimizing")
 
+        fig.savefig(
+            "covid-model-simple.jpg",
+            format="jpeg",
+            dpi=100,
+            bbox_inches="tight",
+        )
+
         plt.show()
