@@ -110,7 +110,7 @@ class SimpleCovidModel:
 
         return
 
-    def optimizer(self, x, lockdown_a, lockdown_b):
+    def optimizer(self, params):
         ret = odeint(
             self.deriv,
             self.y0,
@@ -120,25 +120,24 @@ class SimpleCovidModel:
                 self.params["beta_b"],
                 self.params["beta_k"],
                 self.params["slipthrough"],
-                lockdown_a,
-                lockdown_b,
+                params["lockdown_a"],
+                params["lockdown_b"],
                 self.params["gamma"],
                 self.params["rho"],
             ),
         )
 
         totaldeaths = ret.T[4][-1]
+        lockdownintensity = sum(ret.T[0])
 
-        return totaldeaths
+        return totaldeaths, lockdownintensity
 
     def optimize(self):
+        """
         mod = lmfit.Model(self.optimizer)
         # params = mod.make_params()
 
-        params = lmfit.Parameters()
 
-        params.add("lockdown_a", min=0, max=1, value=0.2)
-        params.add("lockdown_b", min=0, max=1, value=0.2)
 
         x_data = self.t
         y_data = self.fit_data
@@ -151,8 +150,15 @@ class SimpleCovidModel:
             lockdown_a=self.params["lockdown_a"],
             lockdown_b=self.params["lockdown_b"],
         )
+        """
 
-        print(result.fit_report())
+        params = lmfit.Parameters()
+
+        params.add("lockdown_a", min=0, max=1, value=0.2)
+        params.add("lockdown_b", min=0, max=1, value=0.2)
+
+        # print(result.fit_report())
+        lmfit.minimize(self.optimizer, params, method="leastsq")
 
         self.params["lockdown_a"] = params["lockdown_a"]
         self.params["lockdown_b"] = params["lockdown_b"]
