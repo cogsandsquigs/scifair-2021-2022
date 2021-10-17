@@ -88,11 +88,11 @@ for i in range(len(usdata)):
     # fitting data
     fit_data = np.array(deaths)
     # Initial number of infected and recovered individuals, I0 and R0.
-    I0, R0, D0 = 1, 0, 0
+    L0, I0, R0, D0 = 0, 1, 0, 0
     # Everyone else, S0, is susceptible to infection initially.
     S0 = N - I0 - R0 - D0
 
-    y0 = S0, I0, R0, D0
+    y0 = L0, S0, I0, R0, D0
 
     newModel = SimpleCovidModel(
         N,

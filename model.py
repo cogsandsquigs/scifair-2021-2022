@@ -36,25 +36,13 @@ class SimpleCovidModel:
 
         N = self.N
 
-        S, I, R, D = y
-        dSdt = (
-            -self.beta(beta_a, beta_b, beta_k, t)
-            * (self.lockdown(lockdown_a, lockdown_b, t) - slipthrough)
-            * S
-            * I
-            / N
-        )
-        dIdt = (
-            self.beta(beta_a, beta_b, beta_k, t)
-            * (1 + slipthrough - self.lockdown(lockdown_a, lockdown_b, t))
-            * S
-            * I
-            / N
-            - gamma * I
-        )
+        L, S, I, R, D = y
+        dLdt = slipthrough - self.lockdown(lockdown_a, lockdown_b, t)
+        dSdt = -self.beta(beta_a, beta_b, beta_k, t) * L * S * I / N
+        dIdt = self.beta(beta_a, beta_b, beta_k, t) * (1 + L) * S * I / N - gamma * I
         dRdt = (1 - rho) * gamma * I
         dDdt = (rho) * gamma * I
-        return dSdt, dIdt, dRdt, dDdt
+        return dLdt, dSdt, dIdt, dRdt, dDdt
 
     def predict(self):
         ret = odeint(
@@ -92,7 +80,7 @@ class SimpleCovidModel:
                 rho,
             ),
         )
-        return ret.T[3]
+        return ret.T[4]
 
     def fit(self):
 
@@ -139,7 +127,7 @@ class SimpleCovidModel:
             ),
         )
 
-        totaldeaths = ret.T[3][-1]
+        totaldeaths = ret.T[4][-1]
 
         return totaldeaths
 
@@ -175,12 +163,12 @@ class SimpleCovidModel:
 
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(11, 5))
 
-        def set_ax(ax, S, I, R, D):
+        def set_ax(ax, L, S, I, R, D):
             # ax.plot(t, S, "g", alpha=0.5, lw=2, label="Susceptible")
-            ax.plot(t, I, "r", alpha=0.5, lw=2, label="Infected")
+            l1 = ax.plot(t, I, "r", alpha=0.5, lw=2, label="Infected")
             # ax.plot(t, R, "b", alpha=0.5, lw=2, label="Recovered")
-            ax.plot(t, D, "k", alpha=0.5, lw=2, label="Dead")
-            ax.plot(t, self.fit_data, "y", alpha=0.5, lw=2, label="True Dead")
+            l2 = ax.plot(t, D, "k", alpha=0.5, lw=2, label="Dead")
+            l3 = ax.plot(t, self.fit_data, "y", alpha=0.5, lw=2, label="True Dead")
 
             ax.set_xlabel("Time in days")
             ax.set_ylabel("Number of people per category")
@@ -188,12 +176,20 @@ class SimpleCovidModel:
             ax.yaxis.set_tick_params(length=0)
             ax.xaxis.set_tick_params(length=0)
 
-            legend = ax.legend()
-            legend.get_frame().set_alpha(0.5)
-
             for spine in ("top", "right", "bottom", "left"):
                 ax.spines[spine].set_visible(False)
 
+            ax2 = ax.twinx()
+            l4 = ax2.plot(
+                t, L, "g", alpha=0.5, lw=2, label="lockdown intensity over time"
+            )
+            ax.set_ylabel("Lockdown intensity")
+
+            lns = l1 + l2 + l3 + l4
+            labs = [l.get_label() for l in lns]
+            ax.legend(lns, labs, loc=0)
+
+        """
         def set_ax_no_truedead(ax, S, I, R, D):
             # ax.plot(t, S, "g", alpha=0.5, lw=2, label="Susceptible")
             ax.plot(t, I, "r", alpha=0.5, lw=2, label="Infected")
@@ -212,21 +208,22 @@ class SimpleCovidModel:
 
             for spine in ("top", "right", "bottom", "left"):
                 ax.spines[spine].set_visible(False)
+        """
 
-        S, I, R, D = self.predict()
-        set_ax(ax1, S, I, R, D)
+        L, S, I, R, D = self.predict()
+        set_ax(ax1, L, S, I, R, D)
         ax1.set_title("before fitting")
 
         self.fit()
 
-        S, I, R, D = self.predict()
-        set_ax(ax2, S, I, R, D)
+        L, S, I, R, D = self.predict()
+        set_ax(ax2, L, S, I, R, D)
         ax2.set_title("after fitting")
 
         self.optimize()
 
-        S, I, R, D = self.predict()
-        set_ax_no_truedead(ax3, S, I, R, D)
+        L, S, I, R, D = self.predict()
+        set_ax(ax3, L, S, I, R, D)
         ax3.set_title("after optimizing")
 
         plt.show()
