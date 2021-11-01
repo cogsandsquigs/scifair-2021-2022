@@ -17,7 +17,12 @@ class SimpleCovidModel:
         return beta_k / (1 + np.exp(beta_a + beta_b * t))
 
     def lockdown(self, a, b, t):
-        return 1 / (1 + np.exp(a + b * t))
+        intensity = 1 / (1 + np.exp(a + b * t))
+        if intensity > 1:
+            return 1
+        if intensity < 0:
+            return 0
+        return intensity
 
     # The SIR model differential equations.
     def deriv(
@@ -27,7 +32,6 @@ class SimpleCovidModel:
         beta_a,
         beta_b,
         beta_k,
-        slipthrough,
         lockdown_a,
         lockdown_b,
         gamma,
@@ -37,9 +41,9 @@ class SimpleCovidModel:
         N = self.N
 
         L, S, I, R, D = y
-        dLdt = slipthrough - self.lockdown(lockdown_a, lockdown_b, t)
+        dLdt = self.lockdown(lockdown_a, lockdown_b, t)
         dSdt = -self.beta(beta_a, beta_b, beta_k, t) * L * S * I / N
-        dIdt = self.beta(beta_a, beta_b, beta_k, t) * (1 + L) * S * I / N - gamma * I
+        dIdt = self.beta(beta_a, beta_b, beta_k, t) * (1 - L) * S * I / N - gamma * I
         dRdt = (1 - rho) * gamma * I
         dDdt = (rho) * gamma * I
         return dLdt, dSdt, dIdt, dRdt, dDdt
@@ -53,7 +57,6 @@ class SimpleCovidModel:
                 self.params["beta_a"],
                 self.params["beta_b"],
                 self.params["beta_k"],
-                self.params["slipthrough"],
                 self.params["lockdown_a"],
                 self.params["lockdown_b"],
                 self.params["gamma"],
@@ -63,7 +66,7 @@ class SimpleCovidModel:
         return ret.T
 
     def fitter(
-        self, x, beta_a, beta_b, beta_k, slipthrough, lockdown_a, lockdown_b, gamma, rho
+        self, x, beta_a, beta_b, beta_k, lockdown_a, lockdown_b, gamma, rho
     ):
         ret = odeint(
             self.deriv,
@@ -73,7 +76,6 @@ class SimpleCovidModel:
                 beta_a,
                 beta_b,
                 beta_k,
-                slipthrough,
                 lockdown_a,
                 lockdown_b,
                 gamma,
@@ -98,7 +100,6 @@ class SimpleCovidModel:
             beta_a=self.params["beta_a"],
             beta_b=self.params["beta_b"],
             beta_k=self.params["beta_k"],
-            slipthrough=self.params["slipthrough"],
             lockdown_a=self.params["lockdown_a"],
             lockdown_b=self.params["lockdown_b"],
             gamma=self.params["gamma"],
@@ -119,7 +120,6 @@ class SimpleCovidModel:
                 self.params["beta_a"],
                 self.params["beta_b"],
                 self.params["beta_k"],
-                self.params["slipthrough"],
                 params["lockdown_a"],
                 params["lockdown_b"],
                 self.params["gamma"],
@@ -163,11 +163,12 @@ class SimpleCovidModel:
         self.params["lockdown_a"] = params["lockdown_a"]
         self.params["lockdown_b"] = params["lockdown_b"]
 
-    def plot(self):
+    def plot(self, state, county):
 
         t = self.t
 
-        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(11, 5))
+        # ax1, 
+        fig, (ax2, ax3) = plt.subplots(1, 2, figsize=(11, 5))
 
         def set_ax(ax, L, S, I, R, D):
             # ax.plot(t, S, "g", alpha=0.5, lw=2, label="Susceptible")
@@ -189,7 +190,8 @@ class SimpleCovidModel:
             l4 = ax2.plot(
                 t, L, "g", alpha=0.5, lw=2, label="lockdown intensity over time"
             )
-            ax.set_ylabel("Lockdown intensity")
+            ax.set_ylabel("People")
+            ax2.set_ylabel("Lockdown intensity")
 
             lns = l1 + l2 + l3 + l4
             labs = [l.get_label() for l in lns]
@@ -216,24 +218,25 @@ class SimpleCovidModel:
                 ax.spines[spine].set_visible(False)
         """
 
-        L, S, I, R, D = self.predict()
-        set_ax(ax1, L, S, I, R, D)
-        ax1.set_title("before fitting")
-
         self.fit()
-
         L, S, I, R, D = self.predict()
         set_ax(ax2, L, S, I, R, D)
-        ax2.set_title("after fitting")
+        ax2.set_title("Fitted model of " + county + ", " + state)
 
         self.optimize()
-
         L, S, I, R, D = self.predict()
         set_ax(ax3, L, S, I, R, D)
-        ax3.set_title("after optimizing")
+        ax3.set_title("After optimizing model of " + county + ", " + state)
+
+        plt.subplots_adjust(left=0.1,
+                    bottom=0.1, 
+                    right=0.9, 
+                    top=0.9, 
+                    wspace=0.4, 
+                    hspace=0.4)
 
         fig.savefig(
-            "covid-model-simple.jpg",
+            "covid-model-simple " + state + "-" + county + ".jpg",
             format="jpeg",
             dpi=100,
             bbox_inches="tight",

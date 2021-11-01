@@ -15,12 +15,12 @@ def us_county_data():
     datalist = []
     countylist = [
         (84017031, "Illinois", "Cook County"),
-        (84017031, "Illinois", "Cook County"),
+        (84025003, "Massachusetts", "Berkshire County"),
     ]
 
     for i in range(len(countylist)):
 
-        uid, state, county = countylist[i]  # bibb county, alabama
+        uid, state, county = countylist[i]
 
         county_data = us_county_covid_deaths.loc[us_county_covid_deaths["UID"] == uid]
 
@@ -42,7 +42,7 @@ def us_county_data():
         states = us_county_population.loc[us_county_population["STNAME"] == state]
         cty_pop = states.loc[states["CTYNAME"] == county]
 
-        datalist.append((deathslist, int(cty_pop["POPESTIMATE2020"])))
+        datalist.append((state, county, deathslist, int(cty_pop["POPESTIMATE2020"])))
 
     return datalist
 
@@ -58,12 +58,8 @@ def get_params():
     params.add("beta_b", min=0, max=1, value=0.2)
     params.add("beta_k", min=0, max=10, value=0.2)
 
-    # lockdown is calculated through these next lines
-    params.add(
-        "slipthrough", min=0, max=1, value=0
-    )  # slipthrough rate of the disease through lockdown efforts
-    params.add("lockdown_a", min=0, max=1, value=0.2)
-    params.add("lockdown_b", min=0, max=1, value=0.2)
+    params.add("lockdown_a", value=0.2)
+    params.add("lockdown_b", value=0.2)
 
     params.add(
         "gamma", min=0, max=1, value=0.1
@@ -77,7 +73,7 @@ params = get_params()
 
 for i in range(len(usdata)):
 
-    deaths, pop = usdata[i]
+    state, county, deaths, pop = usdata[i]
 
     # Total population, N.
     # us state pop data from https://www.census.gov/programs-surveys/popest/technical-documentation/research/evaluation-estimates/2020-evaluation-estimates/2010s-counties-total.html
@@ -103,4 +99,4 @@ for i in range(len(usdata)):
         fit_data,
     )
 
-    newModel.plot()
+    newModel.plot(state, county)
