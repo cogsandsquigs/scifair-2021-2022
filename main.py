@@ -5,7 +5,7 @@ import lmfit
 import numpy as np
 import pandas as pd
 
-from model import SimpleCovidModel
+from simple_model import SimpleCovidModel
 
 
 def us_county_data():
@@ -99,4 +99,4 @@ for i in range(len(usdata)):
         fit_data,
     )
 
-    newModel.plot(state, county)
+    newModel.plot(state, county, display=True)

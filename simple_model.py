@@ -1,6 +1,7 @@
 import lmfit
 import numpy as np
 from scipy.integrate import odeint
+from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 
 
@@ -111,7 +112,7 @@ class SimpleCovidModel:
 
         return
 
-    def optimizer(self, params):
+    def optimizer(self, args):
         ret = odeint(
             self.deriv,
             self.y0,
@@ -120,8 +121,8 @@ class SimpleCovidModel:
                 self.params["beta_a"],
                 self.params["beta_b"],
                 self.params["beta_k"],
-                params["lockdown_a"],
-                params["lockdown_b"],
+                args[0],
+                args[1],
                 self.params["gamma"],
                 self.params["rho"],
             ),
@@ -130,7 +131,7 @@ class SimpleCovidModel:
         totaldeaths = ret.T[4][-1]
         lockdownintensity = sum(ret.T[0])
 
-        return totaldeaths, lockdownintensity
+        return (totaldeaths + lockdownintensity * self.N) / 2 
 
     def optimize(self):
         """
@@ -151,19 +152,15 @@ class SimpleCovidModel:
             lockdown_b=self.params["lockdown_b"],
         )
         """
+        
+                # print(result.fit_report())
+        res = minimize(self.optimizer, [0, 0])
 
-        params = lmfit.Parameters()
 
-        params.add("lockdown_a", min=0, max=1, value=0.2)
-        params.add("lockdown_b", min=0, max=1, value=0.2)
+        self.params["lockdown_a"] = lmfit.Parameter(name='lockdown_a', value=res.x[0])
+        self.params["lockdown_b"] = lmfit.Parameter(name='lockdown_a', value=res.x[1])
 
-        # print(result.fit_report())
-        lmfit.minimize(self.optimizer, params, method="leastsq")
-
-        self.params["lockdown_a"] = params["lockdown_a"]
-        self.params["lockdown_b"] = params["lockdown_b"]
-
-    def plot(self, state, county):
+    def plot(self, state, county, display=False):
 
         t = self.t
 
@@ -242,4 +239,5 @@ class SimpleCovidModel:
             bbox_inches="tight",
         )
 
-        plt.show()
+        if display:
+            plt.show()
