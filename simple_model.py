@@ -19,10 +19,6 @@ class SimpleCovidModel:
 
     def lockdown(self, a, b, t):
         intensity = 1 / (1 + np.exp(a + b * t))
-        if intensity > 1:
-            return 1
-        if intensity < 0:
-            return 0
         return intensity
 
     # The SIR model differential equations.
@@ -45,7 +41,7 @@ class SimpleCovidModel:
         dLdt = self.lockdown(lockdown_a, lockdown_b, t)
         if dLdt > 1:
             dLdt = 1
-        if dLdt < 1:
+        if dLdt < 0:
             dLdt = 0
         dSdt = -self.beta(beta_a, beta_b, beta_k, t) * L * S * I / N
         dIdt = self.beta(beta_a, beta_b, beta_k, t) * (1 - L) * S * I / N - gamma * I

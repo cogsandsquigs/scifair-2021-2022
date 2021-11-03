@@ -48,7 +48,7 @@ class LogCovidModel:
         dLdt = self.lockdown(lockdown_a, lockdown_b, t)
         if dLdt > 1:
             dLdt = 1
-        if dLdt < 1:
+        if dLdt < 0:
             dLdt = 0
         dSdt = -self.beta(beta_a, beta_b, beta_k, t) * L * S * I / N
         dIdt = self.beta(beta_a, beta_b, beta_k, t) * (1 - L) * S * I / N - gamma * I
