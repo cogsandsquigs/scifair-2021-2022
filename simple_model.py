@@ -233,7 +233,7 @@ class SimpleCovidModel:
                     hspace=0.4)
 
         fig.savefig(
-            "covid-model-simple " + state + "-" + county + ".jpg",
+            "out-covid-model-simple " + state + "-" + county + ".jpg",
             format="jpeg",
             dpi=100,
             bbox_inches="tight",

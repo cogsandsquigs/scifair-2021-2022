@@ -1,0 +1,5 @@
+# data ouptut files
+out-*.jpg
+out-*.csv
+
+__pycache_

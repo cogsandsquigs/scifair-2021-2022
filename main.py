@@ -99,4 +99,4 @@ for i in range(len(usdata)):
         fit_data,
     )
 
-    newModel.plot(state, county, display=True)
+    newModel.plot(state, county, display=False)
