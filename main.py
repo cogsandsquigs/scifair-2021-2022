@@ -1,11 +1,14 @@
+from pathlib import Path
 import matplotlib.pyplot as plt
 from datetime import time
-from os import times
+from os import path, times
 import lmfit
 import numpy as np
 import pandas as pd
+from sklearn.metrics import mean_squared_error as mse
 
 from simple_model import SimpleCovidModel
+from log_model import LogCovidModel
 
 
 def us_county_data():
@@ -16,6 +19,7 @@ def us_county_data():
     countylist = [
         (84017031, "Illinois", "Cook County"),
         (84025003, "Massachusetts", "Berkshire County"),
+        (84001007, "Alabama", "Bibb County"),
     ]
 
     for i in range(len(countylist)):
@@ -71,32 +75,73 @@ def get_params():
 usdata = us_county_data()
 params = get_params()
 
-for i in range(len(usdata)):
+# SimpleCovidModel,
+models = [SimpleCovidModel, LogCovidModel]
 
-    state, county, deaths, pop = usdata[i]
 
-    # Total population, N.
-    # us state pop data from https://www.census.gov/programs-surveys/popest/technical-documentation/research/evaluation-estimates/2020-evaluation-estimates/2010s-counties-total.html
-    N = pop
-    # Amount of days in the simulation
-    days = len(deaths)
-    # A grid of time points (in days)
-    t = np.linspace(0, days, days)
-    # fitting data
-    fit_data = np.array(deaths)
-    # Initial number of infected and recovered individuals, I0 and R0.
-    L0, I0, R0, D0 = 0, 1, 0, 0
-    # Everyone else, S0, is susceptible to infection initially.
-    S0 = N - I0 - R0 - D0
+for m in models:
 
-    y0 = L0, S0, I0, R0, D0
-
-    newModel = SimpleCovidModel(
-        N,
-        days,
-        y0,
-        params,
-        fit_data,
+    outdata = pd.DataFrame(
+        {
+            "state": [],
+            "county": [],
+            "accuracy (MSE)": [],
+            "total deaths": [],
+            "optimized total deaths": [],
+            "death difference (MSE)": [],
+            "overall lockdown intensity": [],
+            "optimized overall lockdown intensity": [],
+            "lockdown intensity difference (MSE)": [],
+        }
     )
 
-    newModel.plot(state, county, display=False)
+    for i in range(len(usdata)):
+
+        state, county, deaths, pop = usdata[i]
+
+        # Total population, N.
+        # us state pop data from https://www.census.gov/programs-surveys/popest/technical-documentation/research/evaluation-estimates/2020-evaluation-estimates/2010s-counties-total.html
+        N = pop
+        # Amount of days in the simulation
+        days = len(deaths)
+        # A grid of time points (in days)
+        t = np.linspace(0, days, days)
+        # fitting data
+        fit_data = np.array(deaths)
+        # Initial number of infected and recovered individuals, I0 and R0.
+        L0, I0, R0, D0 = 0, 1, 0, 0
+        # Everyone else, S0, is susceptible to infection initially.
+        S0 = N - I0 - R0 - D0
+
+        y0 = L0, S0, I0, R0, D0
+
+        newModel = m(
+            N,
+            days,
+            y0,
+            params,
+            fit_data,
+        )
+
+        retdata = newModel.plot(state, county, display=False)
+        outdata.loc[len(outdata.index)] = [
+            state,
+            county,
+            mse(newModel.fit_data, retdata[0][4]),
+            retdata[0][4][-1],
+            retdata[1][4][-1],
+            mse(
+                retdata[0][4],
+                retdata[1][4],
+            ),
+            sum(retdata[0][0]),
+            sum(retdata[1][0]),
+            mse(
+                retdata[0][0],
+                retdata[1][0],
+            ),
+        ]
+
+    outdata.to_csv(Path(r"./out-" + m.__name__ + r"-data.csv"))
+
+# print(outdata)

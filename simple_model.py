@@ -43,6 +43,10 @@ class SimpleCovidModel:
 
         L, S, I, R, D = y
         dLdt = self.lockdown(lockdown_a, lockdown_b, t)
+        if dLdt > 1:
+            dLdt = 1
+        if dLdt < 1:
+            dLdt = 0
         dSdt = -self.beta(beta_a, beta_b, beta_k, t) * L * S * I / N
         dIdt = self.beta(beta_a, beta_b, beta_k, t) * (1 - L) * S * I / N - gamma * I
         dRdt = (1 - rho) * gamma * I
@@ -66,9 +70,7 @@ class SimpleCovidModel:
         )
         return ret.T
 
-    def fitter(
-        self, x, beta_a, beta_b, beta_k, lockdown_a, lockdown_b, gamma, rho
-    ):
+    def fitter(self, x, beta_a, beta_b, beta_k, lockdown_a, lockdown_b, gamma, rho):
         ret = odeint(
             self.deriv,
             self.y0,
@@ -131,7 +133,7 @@ class SimpleCovidModel:
         totaldeaths = ret.T[4][-1]
         lockdownintensity = sum(ret.T[0])
 
-        return (totaldeaths + lockdownintensity * self.N) / 2 
+        return (totaldeaths + lockdownintensity * self.N) / 2
 
     def optimize(self):
         """
@@ -152,19 +154,18 @@ class SimpleCovidModel:
             lockdown_b=self.params["lockdown_b"],
         )
         """
-        
-                # print(result.fit_report())
+
+        # print(result.fit_report())
         res = minimize(self.optimizer, [0, 0])
 
-
-        self.params["lockdown_a"] = lmfit.Parameter(name='lockdown_a', value=res.x[0])
-        self.params["lockdown_b"] = lmfit.Parameter(name='lockdown_a', value=res.x[1])
+        self.params["lockdown_a"] = lmfit.Parameter(name="lockdown_a", value=res.x[0])
+        self.params["lockdown_b"] = lmfit.Parameter(name="lockdown_a", value=res.x[1])
 
     def plot(self, state, county, display=False):
 
         t = self.t
 
-        # ax1, 
+        # ax1,
         fig, (ax2, ax3) = plt.subplots(1, 2, figsize=(11, 5))
 
         def set_ax(ax, L, S, I, R, D):
@@ -220,20 +221,21 @@ class SimpleCovidModel:
         set_ax(ax2, L, S, I, R, D)
         ax2.set_title("Fitted model of " + county + ", " + state)
 
+        retdata = [(L, S, I, R, D)]
+
         self.optimize()
         L, S, I, R, D = self.predict()
         set_ax(ax3, L, S, I, R, D)
         ax3.set_title("After optimizing model of " + county + ", " + state)
 
-        plt.subplots_adjust(left=0.1,
-                    bottom=0.1, 
-                    right=0.9, 
-                    top=0.9, 
-                    wspace=0.4, 
-                    hspace=0.4)
+        retdata.append((L, S, I, R, D))
+
+        plt.subplots_adjust(
+            left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.4, hspace=0.4
+        )
 
         fig.savefig(
-            "out-covid-model-simple " + state + "-" + county + ".jpg",
+            "out-" + self.__class__.__name__ + state + "-" + county + ".jpg",
             format="jpeg",
             dpi=100,
             bbox_inches="tight",
@@ -241,3 +243,5 @@ class SimpleCovidModel:
 
         if display:
             plt.show()
+
+        return retdata

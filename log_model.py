@@ -1,10 +1,11 @@
+import math
 import lmfit
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
 
-class SimpleCovidModel:
+class LogCovidModel:
     def __init__(self, N, days, y0, params, fit_data):
         self.params = params  # model parameters
         self.N = N  # number of people
@@ -17,12 +18,15 @@ class SimpleCovidModel:
         return beta_k / (1 + np.exp(beta_a + beta_b * t))
 
     def lockdown(self, a, b, t):
-        intensity = 1 / (1 + np.exp(a + b * t))
-        if intensity > 1:
-            return 1
-        if intensity < 0:
-            return 0
-        return intensity
+        denom = np.log(b)
+        numer = np.log(a)
+        if np.isnan(denom) or denom == 0:
+            denom = 1
+        # print("d: " + str(denom))
+        if np.isnan(numer):
+            numer = 1
+        # print("n: " + str(numer))
+        return np.absolute(numer / denom)
 
     # The SIR model differential equations.
     def deriv(
@@ -42,6 +46,10 @@ class SimpleCovidModel:
 
         L, S, I, R, D = y
         dLdt = self.lockdown(lockdown_a, lockdown_b, t)
+        if dLdt > 1:
+            dLdt = 1
+        if dLdt < 1:
+            dLdt = 0
         dSdt = -self.beta(beta_a, beta_b, beta_k, t) * L * S * I / N
         dIdt = self.beta(beta_a, beta_b, beta_k, t) * (1 - L) * S * I / N - gamma * I
         dRdt = (1 - rho) * gamma * I
@@ -65,9 +73,7 @@ class SimpleCovidModel:
         )
         return ret.T
 
-    def fitter(
-        self, x, beta_a, beta_b, beta_k, lockdown_a, lockdown_b, gamma, rho
-    ):
+    def fitter(self, x, beta_a, beta_b, beta_k, lockdown_a, lockdown_b, gamma, rho):
         ret = odeint(
             self.deriv,
             self.y0,
@@ -133,25 +139,6 @@ class SimpleCovidModel:
         return totaldeaths, lockdownintensity
 
     def optimize(self):
-        """
-        mod = lmfit.Model(self.optimizer)
-        # params = mod.make_params()
-
-
-
-        x_data = self.t
-        y_data = self.fit_data
-
-        result = mod.fit(
-            y_data,
-            params,
-            method="least_squares",
-            x=x_data,
-            lockdown_a=self.params["lockdown_a"],
-            lockdown_b=self.params["lockdown_b"],
-        )
-        """
-
         params = lmfit.Parameters()
 
         params.add("lockdown_a", min=0, max=1, value=0.2)
@@ -167,7 +154,7 @@ class SimpleCovidModel:
 
         t = self.t
 
-        # ax1, 
+        # ax1,
         fig, (ax2, ax3) = plt.subplots(1, 2, figsize=(11, 5))
 
         def set_ax(ax, L, S, I, R, D):
@@ -223,20 +210,21 @@ class SimpleCovidModel:
         set_ax(ax2, L, S, I, R, D)
         ax2.set_title("Fitted model of " + county + ", " + state)
 
+        retdata = [(L, S, I, R, D)]
+
         self.optimize()
         L, S, I, R, D = self.predict()
         set_ax(ax3, L, S, I, R, D)
         ax3.set_title("After optimizing model of " + county + ", " + state)
 
-        plt.subplots_adjust(left=0.1,
-                    bottom=0.1, 
-                    right=0.9, 
-                    top=0.9, 
-                    wspace=0.4, 
-                    hspace=0.4)
+        retdata.append((L, S, I, R, D))
+
+        plt.subplots_adjust(
+            left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.4, hspace=0.4
+        )
 
         fig.savefig(
-            "covid-model-simple " + state + "-" + county + ".jpg",
+            "out-" + self.__class__.__name__ + state + "-" + county + ".jpg",
             format="jpeg",
             dpi=100,
             bbox_inches="tight",
@@ -244,3 +232,5 @@ class SimpleCovidModel:
 
         if display:
             plt.show()
+
+        return retdata
