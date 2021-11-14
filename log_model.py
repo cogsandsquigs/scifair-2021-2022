@@ -19,14 +19,19 @@ class LogCovidModel:
 
     def lockdown(self, a, b, t):
         denom = np.log(b)
-        numer = np.log(a)
-        if np.isnan(denom) or denom == 0:
+        numer = np.log(a * t)
+        if np.isnan(denom) or denom <= 0:
             denom = 1
         # print("d: " + str(denom))
         if np.isnan(numer):
             numer = 1
         # print("n: " + str(numer))
-        return np.absolute(numer / denom)
+        dval = np.absolute(numer / denom)
+        if dval < 1:
+          return 1
+        if 1/dval > 1:
+          return 1
+        return 1/dval
 
     # The SIR model differential equations.
     def deriv(

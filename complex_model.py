@@ -1,11 +1,11 @@
+import math
 import lmfit
 import numpy as np
 from scipy.integrate import odeint
-from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 
 
-class SimpleCovidModel:
+class ComplexCovidModel:
     def __init__(self, N, days, y0, params, fit_data):
         self.params = params  # model parameters
         self.N = N  # number of people
@@ -17,12 +17,19 @@ class SimpleCovidModel:
     def beta(self, beta_a, beta_b, beta_k, t):
         return beta_k / (1 + np.exp(beta_a + beta_b * t))
 
-    def lockdown(self, a, b, t):
-        dval = (1 + np.exp(a + b * t))
+    def lockdown(self, a, b, c, t):
+        denom = np.log(b)
+        numer = np.log(a * t)
+        if np.isnan(denom) or denom == 0:
+          denom = 1
+        if np.isnan(numer):
+          numer = 1
+        if np.isnan(c):
+          c = 1
+        dval = (np.absolute(numer / denom) * (c*t)) + ((1-c*t) * (1 / (1 + np.exp(a + b * t))))
         if np.isnan(dval) or dval < 1:
           return 1
-        intensity = 1 / dval
-        return intensity
+        return 1 / dval
 
     # The SIR model differential equations.
     def deriv(
@@ -34,6 +41,7 @@ class SimpleCovidModel:
         beta_k,
         lockdown_a,
         lockdown_b,
+        lockdown_c,
         gamma,
         rho,
     ):
@@ -41,11 +49,7 @@ class SimpleCovidModel:
         N = self.N
 
         L, S, I, R, D = y
-        dLdt = self.lockdown(lockdown_a, lockdown_b, t)
-        if dLdt > 1:
-            dLdt = 1
-        if dLdt < 0:
-            dLdt = 0
+        dLdt = self.lockdown(lockdown_a, lockdown_b, lockdown_c, t)
         dSdt = -self.beta(beta_a, beta_b, beta_k, t) * L * S * I / N
         dIdt = self.beta(beta_a, beta_b, beta_k, t) * (1 - L) * S * I / N - gamma * I
         dRdt = (1 - rho) * gamma * I
@@ -63,13 +67,14 @@ class SimpleCovidModel:
                 self.params["beta_k"],
                 self.params["lockdown_a"],
                 self.params["lockdown_b"],
+                self.params["lockdown_c"],
                 self.params["gamma"],
                 self.params["rho"],
             ),
         )
         return ret.T
 
-    def fitter(self, x, beta_a, beta_b, beta_k, lockdown_a, lockdown_b, gamma, rho):
+    def fitter(self, x, beta_a, beta_b, beta_k, lockdown_a, lockdown_b, lockdown_c, gamma, rho):
         ret = odeint(
             self.deriv,
             self.y0,
@@ -80,6 +85,7 @@ class SimpleCovidModel:
                 beta_k,
                 lockdown_a,
                 lockdown_b,
+                lockdown_c,
                 gamma,
                 rho,
             ),
@@ -104,6 +110,7 @@ class SimpleCovidModel:
             beta_k=self.params["beta_k"],
             lockdown_a=self.params["lockdown_a"],
             lockdown_b=self.params["lockdown_b"],
+            lockdown_c=self.params["lockdown_c"],
             gamma=self.params["gamma"],
             rho=self.params["rho"],
         )
@@ -113,7 +120,7 @@ class SimpleCovidModel:
 
         return
 
-    def optimizer(self, args):
+    def optimizer(self, params):
         ret = odeint(
             self.deriv,
             self.y0,
@@ -122,8 +129,9 @@ class SimpleCovidModel:
                 self.params["beta_a"],
                 self.params["beta_b"],
                 self.params["beta_k"],
-                args[0],
-                args[1],
+                params["lockdown_a"],
+                params["lockdown_b"],
+                params["lockdown_c"],
                 self.params["gamma"],
                 self.params["rho"],
             ),
@@ -132,33 +140,21 @@ class SimpleCovidModel:
         totaldeaths = ret.T[4][-1]
         lockdownintensity = sum(ret.T[0])
 
-        return (totaldeaths + lockdownintensity * self.N) / 2
+        return totaldeaths, lockdownintensity, 0.0
 
     def optimize(self):
-        """
-        mod = lmfit.Model(self.optimizer)
-        # params = mod.make_params()
+        params = lmfit.Parameters()
 
-
-
-        x_data = self.t
-        y_data = self.fit_data
-
-        result = mod.fit(
-            y_data,
-            params,
-            method="least_squares",
-            x=x_data,
-            lockdown_a=self.params["lockdown_a"],
-            lockdown_b=self.params["lockdown_b"],
-        )
-        """
+        params.add("lockdown_a", min=0, max=1, value=0.2)
+        params.add("lockdown_b", min=0, max=1, value=0.2)
+        params.add("lockdown_c", min=0, max=1, value=0.2)
 
         # print(result.fit_report())
-        res = minimize(self.optimizer, [0, 0])
+        lmfit.minimize(self.optimizer, params, method="leastsq")
 
-        self.params["lockdown_a"] = lmfit.Parameter(name="lockdown_a", value=res.x[0])
-        self.params["lockdown_b"] = lmfit.Parameter(name="lockdown_a", value=res.x[1])
+        self.params["lockdown_a"] = params["lockdown_a"]
+        self.params["lockdown_b"] = params["lockdown_b"]
+        self.params["lockdown_c"] = params["lockdown_c"]
 
     def plot(self, state, county, display=False):
 
@@ -193,27 +189,6 @@ class SimpleCovidModel:
             lns = l1 + l2 + l3 + l4
             labs = [l.get_label() for l in lns]
             ax.legend(lns, labs, loc=0)
-
-        """
-        def set_ax_no_truedead(ax, S, I, R, D):
-            # ax.plot(t, S, "g", alpha=0.5, lw=2, label="Susceptible")
-            ax.plot(t, I, "r", alpha=0.5, lw=2, label="Infected")
-            # ax.plot(t, R, "b", alpha=0.5, lw=2, label="Recovered")
-            ax.plot(t, D, "k", alpha=0.5, lw=2, label="Dead")
-            # ax.plot(t, self.fit_data, "y", alpha=0.5, lw=2, label="True Dead")
-
-            ax.set_xlabel("Time in days")
-            ax.set_ylabel("Number of people per category")
-
-            ax.yaxis.set_tick_params(length=0)
-            ax.xaxis.set_tick_params(length=0)
-
-            legend = ax.legend()
-            legend.get_frame().set_alpha(0.5)
-
-            for spine in ("top", "right", "bottom", "left"):
-                ax.spines[spine].set_visible(False)
-        """
 
         self.fit()
         L, S, I, R, D = self.predict()

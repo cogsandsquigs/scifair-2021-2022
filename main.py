@@ -9,7 +9,7 @@ from sklearn.metrics import mean_squared_error as mse
 
 from simple_model import SimpleCovidModel
 from log_model import LogCovidModel
-
+from complex_model import ComplexCovidModel
 
 def us_county_data():
     us_county_covid_deaths = pd.read_csv("data/time_series_covid19_deaths_US.csv")
@@ -64,6 +64,7 @@ def get_params():
 
     params.add("lockdown_a", value=0.2)
     params.add("lockdown_b", value=0.2)
+    params.add("lockdown_c", value=0.2)
 
     params.add(
         "gamma", min=0, max=1, value=0.1
@@ -76,7 +77,7 @@ usdata = us_county_data()
 params = get_params()
 
 # SimpleCovidModel,
-models = [SimpleCovidModel, LogCovidModel]
+models = [LogCovidModel, ComplexCovidModel, SimpleCovidModel]
 
 
 for m in models:
