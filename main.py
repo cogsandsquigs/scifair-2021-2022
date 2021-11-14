@@ -9,7 +9,8 @@ from sklearn.metrics import mean_squared_error as mse
 
 from simple_model import SimpleCovidModel
 from log_model import LogCovidModel
-from complex_model import ComplexCovidModel
+from quartic_model import QuarticCovidModel
+
 
 def us_county_data():
     us_county_covid_deaths = pd.read_csv("data/time_series_covid19_deaths_US.csv")
@@ -18,8 +19,10 @@ def us_county_data():
     datalist = []
     countylist = [
         (84017031, "Illinois", "Cook County"),
-        (84025003, "Massachusetts", "Berkshire County"),
         (84001007, "Alabama", "Bibb County"),
+        (84042101, "Pennsylvania", "Philadelphia County"),
+        (84025003, "Massachusetts", "Berkshire County"),
+        (84006037, "California", "Los Angeles County"),
     ]
 
     for i in range(len(countylist)):
@@ -65,6 +68,8 @@ def get_params():
     params.add("lockdown_a", value=0.2)
     params.add("lockdown_b", value=0.2)
     params.add("lockdown_c", value=0.2)
+    params.add("lockdown_d", value=0.2)
+    params.add("lockdown_e", value=0.2)
 
     params.add(
         "gamma", min=0, max=1, value=0.1
@@ -76,8 +81,8 @@ def get_params():
 usdata = us_county_data()
 params = get_params()
 
-# SimpleCovidModel,
-models = [LogCovidModel, ComplexCovidModel, SimpleCovidModel]
+# LogCovidModel, QuarticCovidModel
+models = [SimpleCovidModel]
 
 
 for m in models:

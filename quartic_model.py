@@ -5,7 +5,7 @@ from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
 
-class ComplexCovidModel:
+class QuarticCovidModel:
     def __init__(self, N, days, y0, params, fit_data):
         self.params = params  # model parameters
         self.N = N  # number of people
@@ -17,18 +17,10 @@ class ComplexCovidModel:
     def beta(self, beta_a, beta_b, beta_k, t):
         return beta_k / (1 + np.exp(beta_a + beta_b * t))
 
-    def lockdown(self, a, b, c, t):
-        denom = np.log(b)
-        numer = np.log(a * t)
-        if np.isnan(denom) or denom == 0:
-          denom = 1
-        if np.isnan(numer):
-          numer = 1
-        if np.isnan(c):
-          c = 1
-        dval = (np.absolute(numer / denom) * (c*t)) + ((1-c*t) * (1 / (1 + np.exp(a + b * t))))
+    def lockdown(self, a, b, c, d, e, t):
+        dval = a * t ** 4 + b * t ** 3 + c * t ** 2 + d * t + e
         if np.isnan(dval) or dval < 1:
-          return 1
+            return 1
         return 1 / dval
 
     # The SIR model differential equations.
@@ -42,6 +34,8 @@ class ComplexCovidModel:
         lockdown_a,
         lockdown_b,
         lockdown_c,
+        lockdown_d,
+        lockdown_e,
         gamma,
         rho,
     ):
@@ -49,7 +43,9 @@ class ComplexCovidModel:
         N = self.N
 
         L, S, I, R, D = y
-        dLdt = self.lockdown(lockdown_a, lockdown_b, lockdown_c, t)
+        dLdt = self.lockdown(
+            lockdown_a, lockdown_b, lockdown_c, lockdown_d, lockdown_e, t
+        )
         dSdt = -self.beta(beta_a, beta_b, beta_k, t) * L * S * I / N
         dIdt = self.beta(beta_a, beta_b, beta_k, t) * (1 - L) * S * I / N - gamma * I
         dRdt = (1 - rho) * gamma * I
@@ -68,13 +64,28 @@ class ComplexCovidModel:
                 self.params["lockdown_a"],
                 self.params["lockdown_b"],
                 self.params["lockdown_c"],
+                self.params["lockdown_d"],
+                self.params["lockdown_e"],
                 self.params["gamma"],
                 self.params["rho"],
             ),
         )
         return ret.T
 
-    def fitter(self, x, beta_a, beta_b, beta_k, lockdown_a, lockdown_b, lockdown_c, gamma, rho):
+    def fitter(
+        self,
+        x,
+        beta_a,
+        beta_b,
+        beta_k,
+        lockdown_a,
+        lockdown_b,
+        lockdown_c,
+        lockdown_d,
+        lockdown_e,
+        gamma,
+        rho,
+    ):
         ret = odeint(
             self.deriv,
             self.y0,
@@ -86,6 +97,8 @@ class ComplexCovidModel:
                 lockdown_a,
                 lockdown_b,
                 lockdown_c,
+                lockdown_d,
+                lockdown_e,
                 gamma,
                 rho,
             ),
@@ -111,6 +124,8 @@ class ComplexCovidModel:
             lockdown_a=self.params["lockdown_a"],
             lockdown_b=self.params["lockdown_b"],
             lockdown_c=self.params["lockdown_c"],
+            lockdown_d=self.params["lockdown_d"],
+            lockdown_e=self.params["lockdown_e"],
             gamma=self.params["gamma"],
             rho=self.params["rho"],
         )
@@ -132,6 +147,8 @@ class ComplexCovidModel:
                 params["lockdown_a"],
                 params["lockdown_b"],
                 params["lockdown_c"],
+                params["lockdown_d"],
+                params["lockdown_e"],
                 self.params["gamma"],
                 self.params["rho"],
             ),
@@ -140,21 +157,24 @@ class ComplexCovidModel:
         totaldeaths = ret.T[4][-1]
         lockdownintensity = sum(ret.T[0])
 
-        return totaldeaths, lockdownintensity, 0.0
+        return totaldeaths * lockdownintensity, 0.0, 0.0, 0.0, 0.0
 
     def optimize(self):
         params = lmfit.Parameters()
 
-        params.add("lockdown_a", min=0, max=1, value=0.2)
-        params.add("lockdown_b", min=0, max=1, value=0.2)
-        params.add("lockdown_c", min=0, max=1, value=0.2)
-
+        params.add("lockdown_a", value=0.2)
+        params.add("lockdown_b", value=0.2)
+        params.add("lockdown_c", value=0.2)
+        params.add("lockdown_d", value=0.2)
+        params.add("lockdown_e", value=0.2)
         # print(result.fit_report())
         lmfit.minimize(self.optimizer, params, method="leastsq")
 
         self.params["lockdown_a"] = params["lockdown_a"]
         self.params["lockdown_b"] = params["lockdown_b"]
         self.params["lockdown_c"] = params["lockdown_c"]
+        self.params["lockdown_d"] = params["lockdown_d"]
+        self.params["lockdown_e"] = params["lockdown_e"]
 
     def plot(self, state, county, display=False):
 
