@@ -18,9 +18,9 @@ class SimpleCovidModel:
         return beta_k / (1 + np.exp(beta_a + beta_b * t))
 
     def lockdown(self, a, b, t):
-        dval = (1 + np.exp(a + b * t))
+        dval = 1 + np.exp(a + b * t)
         if np.isnan(dval) or dval < 1:
-          return 1
+            return 1
         intensity = 1 / dval
         return intensity
 
@@ -132,7 +132,7 @@ class SimpleCovidModel:
         totaldeaths = ret.T[4][-1]
         lockdownintensity = sum(ret.T[0])
 
-        return (totaldeaths + lockdownintensity * self.N) / 2
+        return totaldeaths * lockdownintensity
 
     def optimize(self):
         """

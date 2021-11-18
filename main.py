@@ -82,7 +82,7 @@ usdata = us_county_data()
 params = get_params()
 
 # LogCovidModel, QuarticCovidModel
-models = [SimpleCovidModel]
+models = [SimpleCovidModel, LogCovidModel, QuarticCovidModel]
 
 
 for m in models:
